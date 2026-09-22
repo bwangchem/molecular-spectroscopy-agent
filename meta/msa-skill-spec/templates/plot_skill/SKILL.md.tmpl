@@ -1,0 +1,114 @@
+---
+name: {{SKILL_NAME}}
+description: {{SPEC_UPPER}} spectrum plotting sub-agent. Reads the ORCA `.out`, extracts peaks, applies Gaussian/Lorentzian broadening, and writes uniform-style PNG+PDF. Triggered when the user requests "plot the {{SPEC}} spectrum", "plot {{SPEC_UPPER}}", or "draw the {{SPEC}} spectrum". The Agent MUST load this skill BEFORE changing any plot parameter; DO NOT define a custom matplotlib style, you must import msa_shared.spectrum_style; DO NOT import FWHM from anywhere but constants/plot_defaults.py.
+version: 0.1.0
+msa_contract_version: 2.0
+---
+
+# {{SKILL_NAME}}
+
+## What this skill does
+
+Extracts peaks from the `.out` produced by orca-{{SPEC}}, applies broadening,
+plots the {{SPEC_UPPER}} spectrum, and writes both PNG (8x4.5 inch, DPI 300) and
+PDF; the style comes from `msa_shared/spectrum_style.py`.
+
+## Agent Behavior
+
+**CRITICAL: Always interact in the same language the user is using.**
+
+Rules for defaults / overrides:
+- Defaults: DO NOT pass FWHM / xlim; let the skill read from `constants/plot_defaults.py`.
+- Overrides: ONLY pass them when the user explicitly asks.
+- NEVER silently change font size / color / DPI.
+
+## Task Field Contract
+
+This skill sits at the **plotting** stage of the pipeline (stage_id=`plot`,
+upstream=`calc`, spec=`{{SPEC}}`). The authoritative field schema is
+**PIPELINE.md §1.1**; the rows below are this skill's slice of it.
+
+**Consumes (per PIPELINE.md §1.1):**
+- `out_file`: ORCA .out path
+- `target_spectra`: must equal `"{{SPEC}}"`
+- `molecule_name`: used for the output filenames
+- `molecule_name_en`: English display name for the figure title (optional)
+
+**Appends (per PIPELINE.md §1.1):**
+- `plot_status`: "success" | "failed" | "skipped"
+- `plot_error`: str (only when failed / skipped)
+- `plot_signal`: "none" (only when the run had no valid signal)
+- `plot_message`: str (present exactly when `plot_signal` is)
+- `plot_warnings`: list[str] (non-fatal diagnostics; does not change the status)
+- `plot_png`: str (`""` when no signal)
+- `plot_pdf`: str (`""` when no signal)
+
+### Four outcomes, and only four
+
+| Outcome | Fields | Files |
+|---|---|---|
+| drawn | `plot_status="success"` | PNG + PDF |
+| nothing to draw | `plot_status="success"`, `plot_signal="none"`, `plot_message=...` | none (`plot_png=""`) |
+| error | `plot_status="failed"`, `plot_error=...` | none |
+| upstream failed | `plot_status="skipped"`, `plot_error="upstream calc failed"` | none |
+
+A converged run with no valid signal is **not** a failure (PIPELINE.md §2.5) —
+export must still write the raw peaks table for it.
+
+## Output files
+
+Paths come from `naming`, never from string concatenation:
+
+```
+naming.spectrum_png(task["molecule_name"], "{{SPEC}}", variant=naming.spec_variant(task))
+```
+
+`spec_variant` is the per-artifact tag (NMR nucleus, XANES element) and is
+`None` for the other spectra, so two nuclei / edges of the same molecule can
+never overwrite each other.
+
+## Scripts
+
+`scripts/plot_{{SPEC}}.py`
+
+```
+python scripts/plot_{{SPEC}}.py --input local_workspace/<run_id>/task_list.json --output local_workspace/<run_id>/task_list.json
+```
+
+Runtime dependencies `numpy` and `matplotlib` (C-extension, cannot be vendored)
+are declared in the entry script's `MSA_REQUIRES`; `main()` calls `ensure_deps(...)`
+before processing. If either is missing the skill prints `MSA_ENV_MISSING` and exits
+4; set `MSA_AUTO_INSTALL=1` to auto-install.
+
+## Workflow
+
+1. Load task_list.
+2. For each task: pass through if `target_spectra != "{{SPEC}}"`; skip if
+   `upstream_ok(task, "calc")` is false.
+3. Read `out_file`; `orca_output.build_spectrum("{{SPEC}}", text, **spectrum_kwargs(task))`
+   -> peaks, the curve, the axis labels/limits, and `has_signal` / `message` /
+   `warnings`.
+4. If `has_signal` is false: `mark_no_signal(task, "plot", message, plot_png="",
+   plot_pdf="")` and write no file.
+5. Otherwise `spectrum_style.new_figure()` -> `render_spectrum(ax, spectrum)` ->
+   `set_title(ax, spectrum, naming.title_name(task))`.
+6. `spectrum_style.save(fig, base)` where `base` is the variant-tagged path above
+   without its extension -> writes PNG + PDF.
+7. `mark_success(task, "plot", plot_png=..., plot_pdf=...)`, then replay every
+   builder warning through `add_warning(task, "plot", w)`.
+
+## Integration
+
+1. task-recognition → 2. name-to-smiles → 3. smiles-to-xyz → 4. structure-plot → 5. param-recommendation → 6. time-estimation → 7. orca-{{SPEC}} → **8. {{SKILL_NAME}} (this skill)** → 9. export-spectrum-data
+
+## Troubleshooting
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| exit 4 with "MSA_ENV_MISSING" | numpy or matplotlib not importable | run the printed `pip install` command, or set `MSA_AUTO_INSTALL=1` |
+| wrong plot font/color | spectrum_style not imported | add `import msa_shared.spectrum_style` at the top of the script |
+| PNG exists but is empty | broken peak-extraction from the .out | run `orca_output.build_spectrum` on the `.out` in isolation |
+| plot skipped | calc did not succeed | fix upstream first |
+| `plot_signal="none"`, no file | the run converged but has no valid signal | expected — read `plot_message`; not an error |
+| figure title is the Chinese name | `molecule_name_en` absent | re-run name-to-smiles; `title_name` falls back on purpose |
+| two tasks overwrote one file | the variant was not passed to `naming.*` | pass `variant=naming.spec_variant(task)` |

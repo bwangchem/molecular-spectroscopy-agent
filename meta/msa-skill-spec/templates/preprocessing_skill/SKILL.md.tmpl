@@ -1,0 +1,93 @@
+---
+name: {{SKILL_NAME}}
+description: {{DESCRIPTION_SENTENCE}} When the user requests {{TRIGGER_KEYWORDS}}, the Agent MUST load this skill BEFORE running; DO NOT hand-construct the task_list, DO NOT modify constants inside msa_shared.
+version: 0.1.0
+msa_contract_version: 2.0
+---
+
+# {{SKILL_NAME}}
+
+## What this skill does
+
+{{DESCRIPTION_SENTENCE}}
+
+## Agent Behavior
+
+**CRITICAL: Always interact in the same language the user is using.**
+
+Rules for defaults / overrides:
+- Defaults: DO NOT pass parameters; let the skill read them from `msa_shared/constants/`.
+- Overrides: ONLY pass parameters the user explicitly specified.
+- NEVER silently override a default value.
+
+Task-source rule: this skill accepts only the task_list JSON produced by the
+upstream skill (`{{UPSTREAM_STAGE}}`); hand-assembling a task_list is forbidden.
+
+## Task Field Contract
+
+This skill sits at the **{{STAGE_NAME}}** stage of the pipeline
+(stage_id=`{{STAGE_ID}}`, upstream=`{{UPSTREAM_STAGE}}`). The authoritative
+field schema for the whole pipeline is **PIPELINE.md §1.1**; the rows below are
+this skill's slice of it.
+
+**Consumes (from {{UPSTREAM_STAGE}}, per PIPELINE.md §1.1):**
+{{CONSUME_FIELDS_LIST}}
+
+**Appends (written by this skill, per PIPELINE.md §1.1):**
+{{APPEND_FIELDS_LIST}}
+
+Rewriting any upstream field is forbidden; appending fields outside the whitelist
+is forbidden; modifying `task_id` is forbidden.
+
+## Scripts
+
+`scripts/{{ENTRY_SCRIPT}}` — CLI entry point
+
+```
+python scripts/{{ENTRY_SCRIPT}} --input <task_list.json> --output <task_list.json>
+```
+
+Arguments:
+
+| Name | Required | Description |
+|---|---|---|
+| `--input` | yes | upstream task_list JSON path |
+| `--output` | yes | output task_list JSON path |
+
+Runtime dependencies (C-extension packages that cannot be vendored) are declared
+in the entry script's `MSA_REQUIRES` list; `main()` calls `ensure_deps(...)` before
+processing. A hard-missing dependency prints `MSA_ENV_MISSING: <mod> -- pip install
+"<spec>"` and exits 4; a soft dependency degrades instead of gating. Set
+`MSA_AUTO_INSTALL=1` to let the skill `pip install` the missing package itself.
+
+## Workflow
+
+1. Load task_list from `--input` via `common_utils.load_task_list`.
+2. For each task, check `upstream_ok(task, "{{UPSTREAM_STAGE}}")`; if it fails, mark_skipped.
+3. {{DOMAIN_STEP_1}}
+4. {{DOMAIN_STEP_2}}
+5. On success write append fields via `mark_success`; on error write via `mark_failed`.
+6. Dump task_list to `--output` via `common_utils.dump_task_list`.
+
+## Integration
+
+1. task-recognition
+2. name-to-smiles
+3. smiles-to-xyz
+4. structure-plot
+5. param-recommendation
+6. time-estimation
+7. orca-{spec}
+8. plot-{spec}
+9. export-spectrum-data
+
+**{{SKILL_NAME}} (this skill)** is step {{PIPELINE_POSITION}}.
+
+## Troubleshooting
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| exit 4 with "MSA_ENV_MISSING" | a C-extension dependency in `MSA_REQUIRES` is not importable | run the printed `pip install` command, or set `MSA_AUTO_INSTALL=1` |
+| exit 2 with "msa_contract_version mismatch" | msa_shared was bumped, this skill was not synced | update the skill frontmatter and the `MSA_CONTRACT_VERSION` constant |
+| all tasks skipped | every upstream stage failed | fix upstream first |
+| ImportError: msa_shared | vendored scripts/msa_shared/ missing or bootstrap block altered | run tools/vendor_msa_shared.py sync; copy the self-locating block from msa-skill-spec/SKILL.md §4.1 |

@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# Maintainer-only and runtime content; never part of the public repository.
+docs/
+draft/
+review_results/
+local_workspace/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors
+.vscode/
+.idea/
+*.swp
+
+# Virtual envs
+.venv/
+venv/
+env/

@@ -1,0 +1,106 @@
+#!/usr/bin/env python3
+"""export-spectrum-data — dump peaks CSV + spectrum curve CSV from ORCA .out.
+
+Type-D (export) MSA skill: pure local, no SLURM. Unlike plot-{spec} there is no
+spec pass-through — this one skill exports every spectrum, so it gates only on
+the upstream ``calc`` stage. A converged run with no valid signal still exports
+(the raw peaks table is real data) and carries ``export_signal="none"``.
+"""
+import os
+import sys
+import argparse
+
+# ---- msa_shared bootstrap (DO NOT MODIFY) ----
+_SCRIPTS_DIR = os.path.dirname(os.path.abspath(__file__))
+if _SCRIPTS_DIR not in sys.path:
+    sys.path.insert(0, _SCRIPTS_DIR)
+
+from msa_shared.common_utils import (
+    load_task_list, dump_task_list,
+    mark_success, mark_failed, mark_skipped, mark_no_signal, add_warning,
+    upstream_ok, spectrum_kwargs,
+    log_startup, read_shared_version, ensure_deps,
+)
+from msa_shared import naming
+
+MSA_CONTRACT_VERSION = "2.0"
+# Export skills build the broadened spectrum curve with numpy (C-extension,
+# cannot be vendored). main() preflights and exits 4 if missing.
+# Each entry is (import_name, pip_spec[, "soft"]).
+MSA_REQUIRES = [('numpy', 'numpy>=1.24')]
+STAGE_ID = "export"
+UPSTREAM_STAGE = "calc"
+# ---- end bootstrap ----
+
+
+def export_task(task: dict) -> dict:
+    """Write the CSVs; return their paths plus the builder's verdict.
+
+    Returns ``{"peaks_csv":..., "spectrum_csv":..., "_has_signal":bool,
+    "_message":str, "_warnings":list}``. Build the spectrum with
+    ``**spectrum_kwargs(task)`` and resolve every path through
+    ``naming.peaks_csv / naming.spectrum_csv`` with
+    ``variant=naming.spec_variant(task)`` so two nuclei / edges of the same
+    molecule never overwrite each other.
+    """
+    raise NotImplementedError("fill in per-spectrum peak+curve extraction")
+
+
+def process_task(task: dict) -> dict:
+    if not upstream_ok(task, UPSTREAM_STAGE):
+        return mark_skipped(task, STAGE_ID, UPSTREAM_STAGE)
+    try:
+        fields = export_task(task)
+    except Exception as e:  # noqa: BLE001 — fail soft, never abort the batch
+        return mark_failed(task, STAGE_ID, f"{type(e).__name__}: {e}")
+
+    has_signal = fields.pop("_has_signal", True)
+    message = fields.pop("_message", "")
+    warnings = fields.pop("_warnings", [])
+    if has_signal:
+        mark_success(task, STAGE_ID, **fields)
+    else:
+        mark_no_signal(task, STAGE_ID, message, **fields)
+    for w in warnings:
+        add_warning(task, STAGE_ID, w)
+    return task
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="export-spectrum-data — CSV exporter")
+    parser.add_argument("--input", required=True)
+    parser.add_argument("--output", required=True)
+    args = parser.parse_args()
+
+    log_startup("export-spectrum-data")
+    ensure_deps(MSA_REQUIRES, "export-spectrum-data")
+    shared_v = read_shared_version()
+    if shared_v != MSA_CONTRACT_VERSION:
+        print(
+            f"ERROR: msa_contract_version mismatch (skill={MSA_CONTRACT_VERSION}, shared={shared_v})",
+            file=sys.stderr,
+        )
+        sys.exit(2)
+
+    try:
+        tasks = load_task_list(args.input)
+    except Exception as e:  # noqa: BLE001
+        print(f"ERROR: cannot load task_list: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    tasks = [process_task(t) for t in tasks]
+    dump_task_list(tasks, args.output)
+
+    n_ok = sum(1 for t in tasks if t.get(f"{STAGE_ID}_status") == "success")
+    n_nosig = sum(1 for t in tasks if t.get(f"{STAGE_ID}_signal") == "none")
+    n_fail = sum(1 for t in tasks if t.get(f"{STAGE_ID}_status") == "failed")
+    n_skip = sum(1 for t in tasks if t.get(f"{STAGE_ID}_status") == "skipped")
+    print(
+        f"SUCCESS: export-spectrum-data processed {len(tasks)} tasks "
+        f"(ok={n_ok} [no_signal={n_nosig}], failed={n_fail}, skipped={n_skip}) -> {args.output}",
+        file=sys.stderr,
+    )
+
+
+if __name__ == "__main__":
+    main()

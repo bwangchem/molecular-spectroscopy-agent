@@ -1,0 +1,166 @@
+#!/usr/bin/env python3
+"""{{SKILL_NAME}} — ORCA {{SPEC_UPPER}} calculation runner (stage_id=calc, spec={{SPEC}}).
+
+Type-B (ORCA) MSA skill. For every task whose ``target_spectra == "{{SPEC}}"`` it
+builds the ORCA ``.inp`` and a SLURM ``submit.sh`` from ``task["params"]`` (never
+hard-coding functional / basis / solvent), uploads them together with the initial
+XYZ to the cluster, submits the job via SLURM, polls to completion, downloads the
+``.out``, and verifies ORCA terminated normally.
+
+Chemistry choices come entirely from ``task["params"]`` (filled upstream by
+param-recommendation); the ORCA/SLURM grammar comes from ``msa_shared.orca_input``;
+the transport is ``common_utils.submit_slurm / poll_slurm / download_results``.
+This skill hard-codes no functional, basis, solvent, or SLURM template of its own.
+
+Input : upstream task_list JSON (--input)
+Output: task_list JSON with calc_status / out_file / calc_wallclock / slurm_job_id
+        (calc_error on failure) appended (--output)
+"""
+import os
+import sys
+import time
+import argparse
+
+# ---- msa_shared bootstrap (DO NOT MODIFY) ----
+_SCRIPTS_DIR = os.path.dirname(os.path.abspath(__file__))
+if _SCRIPTS_DIR not in sys.path:
+    sys.path.insert(0, _SCRIPTS_DIR)
+
+from msa_shared.common_utils import (
+    load_task_list, dump_task_list,
+    mark_success, mark_failed, mark_skipped, upstream_ok,
+    log_startup, read_shared_version, ensure_deps,
+    submit_slurm, poll_slurm, download_results,
+    resolve_cluster, ClusterConfigError,
+)
+from msa_shared import naming
+
+MSA_CONTRACT_VERSION = "2.0"
+# ORCA skills transport over SSH via paramiko (C-extension, cannot be vendored).
+# main() preflights and exits 4 if missing. (import_name, pip_spec[, "soft"]).
+MSA_REQUIRES = [('paramiko', 'paramiko>=3.0')]
+STAGE_ID = "calc"
+UPSTREAM_STAGE = "params"
+SPEC = "{{SPEC}}"
+# ---- end bootstrap ----
+
+from msa_shared import orca_input
+
+
+def build_{{SPEC}}_inputs(task: dict, cluster: dict) -> dict:
+    """Write the ORCA ``.inp`` and SLURM ``submit.sh`` for one task to local paths.
+
+    Reads ``task["params"]`` / ``task["molecule_name"]`` and locates the initial
+    geometry via ``naming.resolve_initial_xyz(task)`` (which prefers the stored
+    ``task["xyz_file"]`` and falls back to the canonical recomputed path, so it is
+    robust to cwd drift — do NOT read ``task["xyz_file"]`` and hand-check
+    ``os.path.isfile`` here). Delegates all grammar to ``orca_input``. Never
+    mutates the task, never touches task_id. Returns the local/remote paths
+    process_task needs to run the job:
+      {inp_path, sh_path, out_path, xyz_file, out_name, remote_dir}
+    Raises (FileNotFoundError / ValueError / NotImplementedError) on bad input;
+    process_task converts any raise into calc_status="failed".
+
+    NEVER hard-code functional / basis / solvent here — read them from
+    task["params"] and hand them to orca_input.build_inp(...).
+
+    Build every path with ``naming.orca_inp / orca_submit_sh / orca_out`` and
+    ``variant=naming.job_variant(task)`` (iron rule 34). That variant is None for
+    every spectrum except XANES — one NMR shielding job serves all nuclei, so a
+    nucleus tag on a job file would fabricate two jobs where there is one.
+    """
+    raise NotImplementedError("fill in ORCA input builder for {{SPEC}}")
+
+
+def process_task(task: dict, cluster: dict) -> dict:
+    """Single-task orchestrator. Never raises; enforces the fail-soft contract.
+
+    Spec routing is a *pass-through*, not a skip: a task whose ``target_spectra``
+    is not ``{{SPEC}}`` is returned untouched (no ``calc_status`` written) so the
+    other orca-{spec} skills can run over the same batch without clobbering this
+    field. ``calc_status="skipped"`` is reserved for the real case — a {{SPEC}}
+    task whose upstream ``params`` stage did not succeed.
+    """
+    if task.get("target_spectra") != SPEC:
+        return task  # not our spectrum; leave the task completely untouched
+    if not upstream_ok(task, UPSTREAM_STAGE):
+        return mark_skipped(task, STAGE_ID, UPSTREAM_STAGE)
+    try:
+        paths = build_{{SPEC}}_inputs(task, cluster)
+        conn = {k: cluster.get(k) for k in ("host", "user", "password", "key_file")}
+
+        t0 = time.time()
+        job_id = submit_slurm(
+            paths["remote_dir"],
+            script=os.path.basename(paths["sh_path"]),
+            upload_files=[paths["inp_path"], paths["sh_path"], paths["xyz_file"]],
+            **conn,
+        )
+        status = poll_slurm(job_id, **conn)
+        wallclock = int(time.time() - t0)
+        if status != "COMPLETED":
+            return mark_failed(task, STAGE_ID, f"SLURM poll returned {status} (job {job_id})")
+
+        local_dir = os.path.dirname(paths["out_path"])
+        downloaded, missing = download_results(paths["remote_dir"], [paths["out_name"]], local_dir, **conn)
+        if paths["out_name"] not in downloaded or not os.path.isfile(paths["out_path"]):
+            return mark_failed(task, STAGE_ID, f"ORCA .out not produced (missing={missing})")
+
+        with open(paths["out_path"], "r", encoding="utf-8", errors="replace") as f:
+            out_text = f.read()
+        if orca_input.ORCA_NORMAL_TERMINATION not in out_text:
+            return mark_failed(task, STAGE_ID, "ORCA_TERMINATED_ABNORMALLY")
+
+        return mark_success(
+            task, STAGE_ID,
+            out_file=paths["out_path"],
+            calc_wallclock=wallclock,
+            slurm_job_id=job_id,
+        )
+    except Exception as e:  # noqa: BLE001 — fail soft, never abort the batch
+        return mark_failed(task, STAGE_ID, f"{type(e).__name__}: {e}")
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="{{SKILL_NAME}} — ORCA {{SPEC_UPPER}} runner")
+    parser.add_argument("--input", required=True, help="input task_list JSON path")
+    parser.add_argument("--output", required=True, help="output task_list JSON path")
+    args = parser.parse_args()
+
+    log_startup("{{SKILL_NAME}}")
+    ensure_deps(MSA_REQUIRES, "{{SKILL_NAME}}")
+    shared_v = read_shared_version()
+    if shared_v != MSA_CONTRACT_VERSION:
+        print(
+            f"ERROR: msa_contract_version mismatch (skill={MSA_CONTRACT_VERSION}, shared={shared_v})",
+            file=sys.stderr,
+        )
+        sys.exit(2)
+
+    try:
+        tasks = load_task_list(args.input)
+    except Exception as e:  # noqa: BLE001
+        print(f"ERROR: cannot load task_list from {args.input}: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    try:
+        cluster = resolve_cluster()
+    except ClusterConfigError as e:
+        print(f"ERROR: {e}", file=sys.stderr)
+        sys.exit(3)
+
+    tasks = [process_task(t, cluster) for t in tasks]
+    dump_task_list(tasks, args.output)
+
+    n_ok = sum(1 for t in tasks if t.get(f"{STAGE_ID}_status") == "success")
+    n_fail = sum(1 for t in tasks if t.get(f"{STAGE_ID}_status") == "failed")
+    n_skip = sum(1 for t in tasks if t.get(f"{STAGE_ID}_status") == "skipped")
+    print(
+        f"SUCCESS: {{SKILL_NAME}} processed {len(tasks)} tasks "
+        f"(ok={n_ok}, failed={n_fail}, skipped={n_skip}) -> {args.output}",
+        file=sys.stderr,
+    )
+
+
+if __name__ == "__main__":
+    main()

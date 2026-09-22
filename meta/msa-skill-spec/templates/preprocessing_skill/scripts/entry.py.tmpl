@@ -1,0 +1,91 @@
+#!/usr/bin/env python3
+"""{{SKILL_NAME}} — {{DESCRIPTION_SENTENCE}}
+
+This is a Type-A (preprocessing) MSA skill: pure local Python, no SLURM.
+"""
+import os
+import sys
+import json
+import argparse
+
+# ---- msa_shared bootstrap (DO NOT MODIFY) ----
+_SCRIPTS_DIR = os.path.dirname(os.path.abspath(__file__))
+if _SCRIPTS_DIR not in sys.path:
+    sys.path.insert(0, _SCRIPTS_DIR)
+
+from msa_shared.common_utils import (
+    load_task_list, dump_task_list,
+    mark_success, mark_failed, mark_skipped, upstream_ok,
+    log_startup, read_shared_version, ensure_deps,
+)
+from msa_shared import naming
+
+MSA_CONTRACT_VERSION = "2.0"
+# C-extension deps cannot be vendored — declare them here so main() can
+# preflight (hard-miss -> exit 4). Empty when the skill is pure-stdlib.
+# Each entry is (import_name, pip_spec[, "soft"]); "soft" = degrade, don't gate.
+# e.g. RDKit-based preprocessing: [('rdkit', 'rdkit>=2023.9')]
+#      PubChem fallback (optional): [('pubchempy', 'pubchempy>=1.0.4', 'soft')]
+MSA_REQUIRES = []
+STAGE_ID = "{{STAGE_ID}}"
+UPSTREAM_STAGE = "{{UPSTREAM_STAGE}}"
+# ---- end bootstrap ----
+
+
+def do_work(task: dict) -> dict:
+    """Domain logic. Return the dict of fields to append on success.
+
+    Replace this stub with real implementation. MUST NOT modify existing
+    task fields. MUST NOT raise — raise handling is done in process_task.
+    """
+    raise NotImplementedError("fill in {{SKILL_NAME}} domain logic here")
+
+
+def process_task(task: dict) -> dict:
+    """Single-task orchestrator. Never raises."""
+    if UPSTREAM_STAGE and not upstream_ok(task, UPSTREAM_STAGE):
+        return mark_skipped(task, STAGE_ID, UPSTREAM_STAGE)
+    try:
+        appended = do_work(task)
+        return mark_success(task, STAGE_ID, **appended)
+    except Exception as e:  # noqa: BLE001
+        return mark_failed(task, STAGE_ID, f"{type(e).__name__}: {e}")
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="{{SKILL_NAME}} — task_list processor")
+    parser.add_argument("--input", required=True, help="input task_list JSON path")
+    parser.add_argument("--output", required=True, help="output task_list JSON path")
+    args = parser.parse_args()
+
+    log_startup("{{SKILL_NAME}}")
+    ensure_deps(MSA_REQUIRES, "{{SKILL_NAME}}")
+    shared_v = read_shared_version()
+    if shared_v != MSA_CONTRACT_VERSION:
+        print(
+            f"ERROR: msa_contract_version mismatch (skill={MSA_CONTRACT_VERSION}, shared={shared_v})",
+            file=sys.stderr,
+        )
+        sys.exit(2)
+
+    try:
+        tasks = load_task_list(args.input)
+    except Exception as e:  # noqa: BLE001
+        print(f"ERROR: cannot load task_list from {args.input}: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    tasks = [process_task(t) for t in tasks]
+    dump_task_list(tasks, args.output)
+
+    n_ok = sum(1 for t in tasks if t.get(f"{STAGE_ID}_status") == "success")
+    n_fail = sum(1 for t in tasks if t.get(f"{STAGE_ID}_status") == "failed")
+    n_skip = sum(1 for t in tasks if t.get(f"{STAGE_ID}_status") == "skipped")
+    print(
+        f"SUCCESS: {{SKILL_NAME}} processed {len(tasks)} tasks "
+        f"(ok={n_ok}, failed={n_fail}, skipped={n_skip}) → {args.output}",
+        file=sys.stderr,
+    )
+
+
+if __name__ == "__main__":
+    main()

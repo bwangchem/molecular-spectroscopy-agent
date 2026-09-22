@@ -1,0 +1,129 @@
+---
+name: export-spectrum-data
+description: Spectrum-data export sub-agent. Reads the ORCA `.out`, extracts the peak table (frequency + intensity) and the broadened curve, and writes a peaks CSV and a curve CSV. Triggered when the user requests "export spectrum data", "export the spectrum", or "give me the CSV". The Agent MUST load this skill BEFORE changing any CSV column name; DO NOT invent column names, they must match PIPELINE.md §3.2; DO NOT use anything other than the documented CSV layout.
+version: 0.1.0
+msa_contract_version: 2.0
+---
+
+# export-spectrum-data
+
+## What this skill does
+
+Extracts the peak table (frequency + intensity) and the broadened curve
+(wavenumber + intensity) from the orca-* `.out`, and writes a peaks CSV and a
+spectrum CSV with uniform column names for downstream consumption (manual
+analysis, AI spreadsheets, Excel).
+
+## Agent Behavior
+
+**CRITICAL: Always interact in the same language the user is using.**
+
+Rules for defaults / overrides:
+- Defaults: DO NOT pass FWHM; use `constants/plot_defaults.py`.
+- Overrides: ONLY when the user explicitly asks.
+- NEVER silently change column names.
+
+**"No valid signal" is NOT a failure.** A calculation can finish correctly and
+still have nothing to broaden (all modes imaginary, a dark S1, every oscillator
+strength below threshold, no nuclei of the requested type). The export still
+succeeds: the peaks CSV is written in full, the curve CSV keeps its metadata and
+header row with no data rows, and the task carries `export_signal="none"` plus
+the fixed reason in `export_message`. Report that reason to the user; do NOT
+re-run the calculation on account of it.
+
+## Task Field Contract
+
+This skill sits at the **data export** stage of the pipeline (stage_id=`export`,
+upstream=`calc`). The authoritative field schema is **PIPELINE.md §1.1**; the rows
+below are this skill's slice of it.
+
+**Consumes (per PIPELINE.md §1.1):**
+- `out_file`: ORCA .out path
+- `target_spectra`: any spec
+- `molecule_name`, `molecule_name_en`: filesystem slug / metadata-header name
+- builder selectors (`extra_params.target_nucleus`, `xanes_target_element`,
+  `system_type`) — NEVER read them by hand, pass
+  `**common_utils.spectrum_kwargs(task)` (iron rule 35)
+
+**Appends (per PIPELINE.md §1.1):**
+- `export_status`: "success" | "failed" | "skipped"
+- `export_signal`: "none" — only when the run had nothing to broaden; status
+  stays `success` (iron rule 31, PIPELINE.md §2.5)
+- `export_message`: str — the fixed reason accompanying `export_signal="none"`
+- `export_warnings`: list[str] — diagnostics that do NOT change the status
+  (iron rule 32); append via `add_warning`, never assign the list directly
+- `export_error`: str (only when failed / skipped)
+- `peaks_csv`: str
+- `spectrum_csv`: str (omit for peaks-only stick spectra such as NMR)
+
+**Four outcomes, and only four:**
+
+| outcome | `export_status` | extra fields | CSV files |
+|---|---|---|---|
+| exported | `success` | — | peaks + curve written |
+| finished, nothing to broaden | `success` | `export_signal="none"`, `export_message` | peaks written in full; curve keeps meta+header, no rows |
+| the export itself broke | `failed` | `export_error` | none |
+| upstream `calc` not successful | `skipped` | `export_error` | none |
+
+## Output files
+
+Resolve every path through `naming`, never by string concatenation:
+
+```python
+variant = naming.spec_variant(task)              # iron rule 34
+peaks = naming.peaks_csv(mol, spec, variant=variant)      # benzene-nmr_1H_peaks.csv
+curve = naming.spectrum_csv(mol, spec, variant=variant)   # benzene-xanes_C_spectrum.csv
+```
+
+`spec_variant` is what keeps two NMR nuclei — or two XANES edges — of the same
+molecule from overwriting each other.
+
+## Scripts
+
+`scripts/export_spectrum_data.py`
+
+```
+python scripts/export_spectrum_data.py --input <task_list.json> --output <task_list.json>
+```
+
+Runtime dependency `numpy` (C-extension, cannot be vendored) is declared in the
+entry script's `MSA_REQUIRES`; `main()` calls `ensure_deps(...)` before processing.
+If it is missing the skill prints `MSA_ENV_MISSING` and exits 4; set
+`MSA_AUTO_INSTALL=1` to auto-install.
+
+## Workflow
+
+1. Load task_list.
+2. Skip the task unless `upstream_ok(task, "calc")`.
+3. Read `out_file` and hand the text to the shared builder together with
+   `**spectrum_kwargs(task)`; it returns the artifacts plus `has_signal` /
+   `message` / `warnings`. Never hand-parse the `.out` and never pick an FWHM
+   here — parsing, filtering, broadening and column names all belong to
+   `msa_shared.orca_output`, so a CSV and its PNG can never disagree.
+4. peaks CSV: the raw record of the run, written UNFILTERED (imaginary modes and
+   zero-oscillator-strength transitions stay in).
+5. curve CSV: the broadened spectrum; x unit matches the spectrum type, and
+   precision comes from `X_DECIMALS` / `Y_DECIMALS` in `constants/plot_defaults`.
+6. Resolve each path via `naming.peaks_csv` / `naming.spectrum_csv` with
+   `variant=naming.spec_variant(task)` and write the `# key: value` metadata
+   lines, then the header, then the rows.
+7. `mark_success` when the builder had a signal, otherwise `mark_no_signal`
+   (status stays `success`, plus `export_signal="none"` and `export_message`);
+   then `add_warning` for each builder warning.
+8. Dump task_list.
+
+## Integration
+
+1. task-recognition → 2. name-to-smiles → 3. smiles-to-xyz → 4. structure-plot → 5. param-recommendation → 6. time-estimation → 7. orca-{spec} → 8. plot-{spec} → **9. export-spectrum-data (this skill)**
+
+## Troubleshooting
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| exit 4 with "MSA_ENV_MISSING" | numpy not importable | run the printed `pip install` command, or set `MSA_AUTO_INSTALL=1` |
+| wrong CSV column names | did not follow this SKILL.md column table | fix per the table |
+| zero peaks | the .out lacks the expected block (e.g. no Freq) | check whether the upstream calc succeeded |
+| export_status=success but `export_signal="none"` | the run finished with nothing to broaden | read `export_message`; this is a chemistry result, not a bug |
+| curve CSV has metadata + header but no data rows | same as above (`export_signal="none"`) | the peaks CSV still holds the full raw data |
+| `export_warnings` is non-empty | a diagnostic that does not invalidate the export | read the messages; the CSVs are still valid |
+| export_status=skipped | upstream `calc` did not succeed | fix the ORCA calculation first |

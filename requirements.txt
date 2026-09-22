@@ -1,0 +1,30 @@
+# Core pipeline dependencies.
+# task-recognition and the meta-skill (validate/dump) use only the Python
+# standard library and need nothing here.
+#
+# The calculation/plotting skills pull in the heavier stack below. Versions are
+# lower bounds known to work; pin them in your own environment as needed.
+#
+# NOTE: this file is the convenient *union* for provisioning an environment
+# ahead of time. It is NOT read at runtime — a host Agent does not consult it.
+# The authoritative, per-skill, machine-readable declaration is each entry
+# script's MSA_REQUIRES list, enforced at startup by common_utils.ensure_deps
+# (missing hard dep -> stderr MSA_ENV_MISSING + exit 4; see PIPELINE.md §2.4).
+
+# 3D structure generation and SMILES handling
+rdkit>=2023.9
+
+# plotting
+matplotlib>=3.7
+numpy>=1.24
+
+# HPC/SLURM remote submission (orca-* skills)
+paramiko>=3.0
+
+# optional (soft): name-to-smiles PubChem fallback when a name is not in the
+# offline dictionary. Missing -> fallback disabled, batch still runs.
+pubchempy>=1.0.4
+
+# optional: parameter-recommendation model
+# xgboost>=2.0
+# mendeleev>=0.14

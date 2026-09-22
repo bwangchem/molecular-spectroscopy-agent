@@ -1,0 +1,505 @@
+{
+  "_comment": "Chinese molecule name -> {smiles(RDKit canonical, from PubChem), english alias}. Offline primary source for name-to-smiles; skill falls back to live PubChem for names absent here.",
+  "molecules": {
+    "苯": {
+      "smiles": "c1ccccc1",
+      "english": "benzene"
+    },
+    "甲苯": {
+      "smiles": "Cc1ccccc1",
+      "english": "toluene"
+    },
+    "乙苯": {
+      "smiles": "CCc1ccccc1",
+      "english": "ethylbenzene"
+    },
+    "邻二甲苯": {
+      "smiles": "Cc1ccccc1C",
+      "english": "o-xylene"
+    },
+    "间二甲苯": {
+      "smiles": "Cc1cccc(C)c1",
+      "english": "m-xylene"
+    },
+    "对二甲苯": {
+      "smiles": "Cc1ccc(C)cc1",
+      "english": "p-xylene"
+    },
+    "苯乙烯": {
+      "smiles": "C=Cc1ccccc1",
+      "english": "styrene"
+    },
+    "联苯": {
+      "smiles": "c1ccc(-c2ccccc2)cc1",
+      "english": "biphenyl"
+    },
+    "萘": {
+      "smiles": "c1ccc2ccccc2c1",
+      "english": "naphthalene"
+    },
+    "蒽": {
+      "smiles": "c1ccc2cc3ccccc3cc2c1",
+      "english": "anthracene"
+    },
+    "苯酚": {
+      "smiles": "Oc1ccccc1",
+      "english": "phenol"
+    },
+    "邻苯二酚": {
+      "smiles": "Oc1ccccc1O",
+      "english": "catechol"
+    },
+    "间苯二酚": {
+      "smiles": "Oc1cccc(O)c1",
+      "english": "resorcinol"
+    },
+    "对苯二酚": {
+      "smiles": "Oc1ccc(O)cc1",
+      "english": "hydroquinone"
+    },
+    "邻甲酚": {
+      "smiles": "Cc1ccccc1O",
+      "english": "o-cresol"
+    },
+    "对甲酚": {
+      "smiles": "Cc1ccc(O)cc1",
+      "english": "p-cresol"
+    },
+    "4-溴苯酚": {
+      "smiles": "Oc1ccc(Br)cc1",
+      "english": "4-bromophenol"
+    },
+    "4-氯苯酚": {
+      "smiles": "Oc1ccc(Cl)cc1",
+      "english": "4-chlorophenol"
+    },
+    "对硝基苯酚": {
+      "smiles": "O=[N+]([O-])c1ccc(O)cc1",
+      "english": "p-nitrophenol"
+    },
+    "邻硝基苯酚": {
+      "smiles": "O=[N+]([O-])c1ccccc1O",
+      "english": "o-nitrophenol"
+    },
+    "苯胺": {
+      "smiles": "Nc1ccccc1",
+      "english": "aniline"
+    },
+    "对硝基苯胺": {
+      "smiles": "Nc1ccc([N+](=O)[O-])cc1",
+      "english": "p-nitroaniline"
+    },
+    "氟苯": {
+      "smiles": "Fc1ccccc1",
+      "english": "fluorobenzene"
+    },
+    "氯苯": {
+      "smiles": "Clc1ccccc1",
+      "english": "chlorobenzene"
+    },
+    "溴苯": {
+      "smiles": "Brc1ccccc1",
+      "english": "bromobenzene"
+    },
+    "碘苯": {
+      "smiles": "Ic1ccccc1",
+      "english": "iodobenzene"
+    },
+    "邻二氯苯": {
+      "smiles": "Clc1ccccc1Cl",
+      "english": "o-dichlorobenzene"
+    },
+    "对二氯苯": {
+      "smiles": "Clc1ccc(Cl)cc1",
+      "english": "p-dichlorobenzene"
+    },
+    "甲烷": {
+      "smiles": "C",
+      "english": "methane"
+    },
+    "乙烷": {
+      "smiles": "CC",
+      "english": "ethane"
+    },
+    "丙烷": {
+      "smiles": "CCC",
+      "english": "propane"
+    },
+    "丁烷": {
+      "smiles": "CCCC",
+      "english": "butane"
+    },
+    "戊烷": {
+      "smiles": "CCCCC",
+      "english": "pentane"
+    },
+    "己烷": {
+      "smiles": "CCCCCC",
+      "english": "hexane"
+    },
+    "正己烷": {
+      "smiles": "CCCCCC",
+      "english": "n-hexane"
+    },
+    "庚烷": {
+      "smiles": "CCCCCCC",
+      "english": "heptane"
+    },
+    "辛烷": {
+      "smiles": "CCCCCCCC",
+      "english": "octane"
+    },
+    "癸烷": {
+      "smiles": "CCCCCCCCCC",
+      "english": "decane"
+    },
+    "十二烷": {
+      "smiles": "CCCCCCCCCCCC",
+      "english": "dodecane"
+    },
+    "环戊烷": {
+      "smiles": "C1CCCC1",
+      "english": "cyclopentane"
+    },
+    "环己烷": {
+      "smiles": "C1CCCCC1",
+      "english": "cyclohexane"
+    },
+    "环庚烷": {
+      "smiles": "C1CCCCCC1",
+      "english": "cycloheptane"
+    },
+    "乙烯": {
+      "smiles": "C=C",
+      "english": "ethylene"
+    },
+    "丙烯": {
+      "smiles": "C=CC",
+      "english": "propylene"
+    },
+    "1,3-丁二烯": {
+      "smiles": "C=CC=C",
+      "english": "1,3-butadiene"
+    },
+    "环己烯": {
+      "smiles": "C1=CCCCC1",
+      "english": "cyclohexene"
+    },
+    "乙炔": {
+      "smiles": "C#C",
+      "english": "acetylene"
+    },
+    "丙炔": {
+      "smiles": "C#CC",
+      "english": "propyne"
+    },
+    "甲醇": {
+      "smiles": "CO",
+      "english": "methanol"
+    },
+    "乙醇": {
+      "smiles": "CCO",
+      "english": "ethanol"
+    },
+    "丙醇": {
+      "smiles": "CCCO",
+      "english": "propanol"
+    },
+    "异丙醇": {
+      "smiles": "CC(C)O",
+      "english": "isopropanol"
+    },
+    "正丁醇": {
+      "smiles": "CCCCO",
+      "english": "n-butanol"
+    },
+    "叔丁醇": {
+      "smiles": "CC(C)(C)O",
+      "english": "tert-butanol"
+    },
+    "乙二醇": {
+      "smiles": "OCCO",
+      "english": "ethylene glycol"
+    },
+    "丙三醇": {
+      "smiles": "OCC(O)CO",
+      "english": "glycerol"
+    },
+    "苯甲醇": {
+      "smiles": "OCc1ccccc1",
+      "english": "benzyl alcohol"
+    },
+    "环己醇": {
+      "smiles": "OC1CCCCC1",
+      "english": "cyclohexanol"
+    },
+    "甲醛": {
+      "smiles": "C=O",
+      "english": "formaldehyde"
+    },
+    "乙醛": {
+      "smiles": "CC=O",
+      "english": "acetaldehyde"
+    },
+    "丙酮": {
+      "smiles": "CC(C)=O",
+      "english": "acetone"
+    },
+    "丁酮": {
+      "smiles": "CCC(C)=O",
+      "english": "butanone"
+    },
+    "苯甲醛": {
+      "smiles": "O=Cc1ccccc1",
+      "english": "benzaldehyde"
+    },
+    "苯乙酮": {
+      "smiles": "CC(=O)c1ccccc1",
+      "english": "acetophenone"
+    },
+    "环己酮": {
+      "smiles": "O=C1CCCCC1",
+      "english": "cyclohexanone"
+    },
+    "甲酸": {
+      "smiles": "O=CO",
+      "english": "formic acid"
+    },
+    "乙酸": {
+      "smiles": "CC(=O)O",
+      "english": "acetic acid"
+    },
+    "丙酸": {
+      "smiles": "CCC(=O)O",
+      "english": "propionic acid"
+    },
+    "苯甲酸": {
+      "smiles": "O=C(O)c1ccccc1",
+      "english": "benzoic acid"
+    },
+    "草酸": {
+      "smiles": "O=C(O)C(=O)O",
+      "english": "oxalic acid"
+    },
+    "丙二酸": {
+      "smiles": "O=C(O)CC(=O)O",
+      "english": "malonic acid"
+    },
+    "丁二酸": {
+      "smiles": "O=C(O)CCC(=O)O",
+      "english": "succinic acid"
+    },
+    "乙酸甲酯": {
+      "smiles": "COC(C)=O",
+      "english": "methyl acetate"
+    },
+    "乙酸乙酯": {
+      "smiles": "CCOC(C)=O",
+      "english": "ethyl acetate"
+    },
+    "苯甲酸甲酯": {
+      "smiles": "COC(=O)c1ccccc1",
+      "english": "methyl benzoate"
+    },
+    "乙醚": {
+      "smiles": "CCOCC",
+      "english": "diethyl ether"
+    },
+    "苯甲醚": {
+      "smiles": "COc1ccccc1",
+      "english": "anisole"
+    },
+    "二苯醚": {
+      "smiles": "c1ccc(Oc2ccccc2)cc1",
+      "english": "diphenyl ether"
+    },
+    "四氢呋喃": {
+      "smiles": "C1CCOC1",
+      "english": "THF"
+    },
+    "1,4-二氧六环": {
+      "smiles": "C1COCCO1",
+      "english": "dioxane"
+    },
+    "甲胺": {
+      "smiles": "CN",
+      "english": "methylamine"
+    },
+    "二甲胺": {
+      "smiles": "CNC",
+      "english": "dimethylamine"
+    },
+    "三甲胺": {
+      "smiles": "CN(C)C",
+      "english": "trimethylamine"
+    },
+    "乙胺": {
+      "smiles": "CCN",
+      "english": "ethylamine"
+    },
+    "三乙胺": {
+      "smiles": "CCN(CC)CC",
+      "english": "triethylamine"
+    },
+    "乙二胺": {
+      "smiles": "NCCN",
+      "english": "ethylenediamine"
+    },
+    "硝基甲烷": {
+      "smiles": "C[N+](=O)[O-]",
+      "english": "nitromethane"
+    },
+    "硝基苯": {
+      "smiles": "O=[N+]([O-])c1ccccc1",
+      "english": "nitrobenzene"
+    },
+    "呋喃": {
+      "smiles": "c1ccoc1",
+      "english": "furan"
+    },
+    "吡咯": {
+      "smiles": "c1cc[nH]c1",
+      "english": "pyrrole"
+    },
+    "噻吩": {
+      "smiles": "c1ccsc1",
+      "english": "thiophene"
+    },
+    "吡啶": {
+      "smiles": "c1ccncc1",
+      "english": "pyridine"
+    },
+    "嘧啶": {
+      "smiles": "c1cncnc1",
+      "english": "pyrimidine"
+    },
+    "咪唑": {
+      "smiles": "c1c[nH]cn1",
+      "english": "imidazole"
+    },
+    "吲哚": {
+      "smiles": "c1ccc2[nH]ccc2c1",
+      "english": "indole"
+    },
+    "喹啉": {
+      "smiles": "c1ccc2ncccc2c1",
+      "english": "quinoline"
+    },
+    "甘氨酸": {
+      "smiles": "NCC(=O)O",
+      "english": "glycine"
+    },
+    "丙氨酸": {
+      "smiles": "C[C@H](N)C(=O)O",
+      "english": "alanine"
+    },
+    "缬氨酸": {
+      "smiles": "CC(C)[C@H](N)C(=O)O",
+      "english": "valine"
+    },
+    "亮氨酸": {
+      "smiles": "CC(C)C[C@H](N)C(=O)O",
+      "english": "leucine"
+    },
+    "苯丙氨酸": {
+      "smiles": "N[C@@H](Cc1ccccc1)C(=O)O",
+      "english": "phenylalanine"
+    },
+    "色氨酸": {
+      "smiles": "N[C@@H](Cc1c[nH]c2ccccc12)C(=O)O",
+      "english": "tryptophan"
+    },
+    "酪氨酸": {
+      "smiles": "N[C@@H](Cc1ccc(O)cc1)C(=O)O",
+      "english": "tyrosine"
+    },
+    "丝氨酸": {
+      "smiles": "N[C@@H](CO)C(=O)O",
+      "english": "serine"
+    },
+    "苏氨酸": {
+      "smiles": "C[C@@H](O)[C@H](N)C(=O)O",
+      "english": "threonine"
+    },
+    "半胱氨酸": {
+      "smiles": "N[C@@H](CS)C(=O)O",
+      "english": "cysteine"
+    },
+    "蛋氨酸": {
+      "smiles": "CSCC[C@H](N)C(=O)O",
+      "english": "methionine"
+    },
+    "天冬氨酸": {
+      "smiles": "N[C@@H](CC(=O)O)C(=O)O",
+      "english": "aspartic acid"
+    },
+    "谷氨酸": {
+      "smiles": "N[C@@H](CCC(=O)O)C(=O)O",
+      "english": "glutamic acid"
+    },
+    "赖氨酸": {
+      "smiles": "NCCCC[C@H](N)C(=O)O",
+      "english": "lysine"
+    },
+    "精氨酸": {
+      "smiles": "NC(N)=NCCC[C@H](N)C(=O)O",
+      "english": "arginine"
+    },
+    "组氨酸": {
+      "smiles": "N[C@@H](Cc1cnc[nH]1)C(=O)O",
+      "english": "histidine"
+    },
+    "脯氨酸": {
+      "smiles": "O=C(O)[C@@H]1CCCN1",
+      "english": "proline"
+    },
+    "二甲基亚砜": {
+      "smiles": "CS(C)=O",
+      "english": "DMSO"
+    },
+    "二甲基硫醚": {
+      "smiles": "CSC",
+      "english": "dimethyl sulfide"
+    },
+    "氯仿": {
+      "smiles": "ClC(Cl)Cl",
+      "english": "chloroform"
+    },
+    "三氯甲烷": {
+      "smiles": "ClC(Cl)Cl",
+      "english": "chloroform"
+    },
+    "二氯甲烷": {
+      "smiles": "ClCCl",
+      "english": "dichloromethane"
+    },
+    "四氯化碳": {
+      "smiles": "ClC(Cl)(Cl)Cl",
+      "english": "carbon tetrachloride"
+    },
+    "苯酚阴离子": {
+      "smiles": "[O-]c1ccccc1",
+      "english": "phenoxide anion"
+    },
+    "苯酚负离子": {
+      "smiles": "[O-]c1ccccc1",
+      "english": "phenoxide anion"
+    },
+    "苯甲酸根": {
+      "smiles": "O=C([O-])c1ccccc1",
+      "english": "benzoate anion"
+    },
+    "乙酸根": {
+      "smiles": "CC(=O)[O-]",
+      "english": "acetate anion"
+    },
+    "甘氨酸两性离子": {
+      "smiles": "[NH3+]CC(=O)[O-]",
+      "english": "glycine zwitterion"
+    },
+    "丙氨酸两性离子": {
+      "smiles": "CC([NH3+])C(=O)[O-]",
+      "english": "alanine zwitterion"
+    }
+  }
+}
